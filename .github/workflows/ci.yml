@@ -37,8 +37,9 @@ jobs:
 
       # Tests run fully offline: no DB, no Redis, no API keys. The code auto-falls back to
       # deterministic/stub providers when keys are absent (see CLAUDE.md).
+      # `python -m pytest` (not bare `pytest`) puts the working dir on sys.path so `app` imports.
       - name: Tests
-        run: pytest -q
+        run: python -m pytest -q
 
   web:
     name: Web (typecheck + build)
@@ -66,6 +67,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_placeholder
+          # Well-formed dummy key (decodes to clerk.example.com$) so Clerk's build-time
+          # format validation passes; real values are injected by Vercel at deploy time.
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
           CLERK_SECRET_KEY: sk_test_ci_placeholder
           API_BASE_URL: http://localhost:8000
