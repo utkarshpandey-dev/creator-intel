@@ -1,0 +1,32 @@
+name: Deploy
+
+# Ships the API + worker to Fly on green pushes to main. Dormant until you opt in:
+# set repo variable DEPLOY_ENABLED=true and secret FLY_API_TOKEN (`fly tokens create deploy`).
+# The web app deploys via Vercel's own Git integration, so it isn't handled here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy-api:
+    name: Deploy API + worker (Fly)
+    # Skip entirely unless explicitly enabled, so the workflow never fails before setup.
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      # Builds the image, runs `alembic upgrade head` (release_command), rolls out both
+      # process groups. Config is validated at container startup (validate_for_deploy).
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
