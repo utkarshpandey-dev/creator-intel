@@ -1,0 +1,76 @@
+# Local development stack. Postgres (with pgvector) and Redis mirror the managed services
+# (Neon + Upstash) used in production; api and worker run the SAME image and process split
+# as Fly, so "works in Docker" closely predicts "works in prod".
+#
+#   # infra only (run api/worker from your venv):
+#   docker compose -f infra/docker/docker-compose.yml up -d postgres redis
+#
+#   # full stack (build the API image, run all four services):
+#   docker compose -f infra/docker/docker-compose.yml --profile full up --build
+#
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: creator_intel
+    ports:
+      - "5432:5432"
+    volumes:
+      - creator_intel_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d creator_intel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - creator_intel_redis:/data
+
+  # The API and worker are opt-in (profile "full") so the common case — infra only — stays fast.
+  api:
+    profiles: ["full"]
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/creator_intel
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    # Apply migrations, then serve. Mirrors Fly's release_command + CMD.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  worker:
+    profiles: ["full"]
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/creator_intel
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: arq app.worker.settings.WorkerSettings
+
+volumes:
+  creator_intel_pg:
+  creator_intel_redis:

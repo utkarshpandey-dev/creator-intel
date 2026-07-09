@@ -1,0 +1,67 @@
+# Fly.io deployment for the FastAPI API + Arq worker.
+# One app, one image, two process groups: `app` serves HTTP, `worker` drains the queue.
+#
+#   fly launch --no-deploy        # first time: creates the app
+#   fly secrets set ...           # see DEPLOYMENT.md for the full list
+#   fly deploy                    # builds the image, runs migrations, rolls out
+#
+app = "creator-intel-api"
+primary_region = "iad"           # keep near Neon's region to minimize DB latency
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  # API: uvicorn (command comes from the Dockerfile CMD).
+  app = ""
+  # Worker: same image, Arq entrypoint.
+  worker = "arq app.worker.settings.WorkerSettings"
+
+[env]
+  APP_ENV = "production"
+  PORT = "8000"
+  DB_REQUIRE_SSL = "true"
+
+# Run migrations once per release, before the new version takes traffic.
+[deploy]
+  release_command = "alembic upgrade head"
+  strategy = "rolling"
+
+# HTTP routing applies only to the `app` process group.
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+
+# Readiness check that also confirms the database is reachable.
+[[http_service.checks]]
+  method = "GET"
+  path = "/health/db"
+  interval = "30s"
+  timeout = "8s"
+  grace_period = "15s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"                  # embeddings/clustering (numpy + sklearn) need headroom
+  processes = ["worker"]

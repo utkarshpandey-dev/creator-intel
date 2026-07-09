@@ -1,0 +1,22 @@
+# Pinned surface for environments without a pyproject-aware installer.
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
+pyjwt[crypto]>=2.10.0
+httpx>=0.28.0
+# --- Milestone 3: database ---
+sqlalchemy[asyncio]>=2.0.36
+asyncpg>=0.30.0
+alembic>=1.14.0
+pgvector>=0.3.6
+# --- Milestone 4: YouTube integration ---
+cryptography>=44.0.0
+arq>=0.26.0
+# --- Milestone 5: comment pipeline ---
+numpy>=2.1.0
+scikit-learn>=1.5.0
+# --- Milestone 6: AI engine ---
+anthropic>=0.49.0
+# --- Milestone 8: payments ---
+stripe>=11.0.0

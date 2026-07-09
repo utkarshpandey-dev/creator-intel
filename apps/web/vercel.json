@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "installCommand": "npm install",
+  "regions": ["iad1"],
+  "git": { "deploymentEnabled": { "main": true } },
+  "functions": {
+    "src/app/api/channels/[channelId]/chat/route.ts": { "maxDuration": 60 }
+  }
+}
