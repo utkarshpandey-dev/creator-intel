@@ -1,139 +1,219 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { apiFetch } from "@/lib/api";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CheckCircle2,
+  Circle,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Users,
+  Video,
+  Youtube,
+} from "lucide-react";
+import { getChannels } from "@/lib/queries";
+import type { Channel } from "@/lib/types";
+import { AppShell } from "@/components/AppShell";
+import { Badge } from "@/components/ui/badge";
 
-type Channel = {
-  id: string;
-  title: string | null;
-  handle: string | null;
-  thumbnail_url: string | null;
-  subscriber_count: number | null;
-  video_count: number | null;
-  last_synced_at: string | null;
-};
+/* ---------------------------------------------------------------------------- */
 
-async function loadChannels(): Promise<Channel[]> {
-  try {
-    const res = await apiFetch("/youtube/channels");
-    if (!res.ok) return [];
-    return (await res.json()) as Channel[];
-  } catch {
-    // Backend may be down in local dev; the shell still renders.
-    return [];
-  }
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="glass flex items-center gap-4 p-5">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-400/20 bg-brand-500/10 text-brand-300">
+        <Icon size={18} strokeWidth={1.8} />
+      </span>
+      <div className="min-w-0">
+        <p className="truncate font-display text-2xl font-bold text-white">{value}</p>
+        <p className="text-[13px] text-slate-500">{label}</p>
+      </div>
+    </div>
+  );
 }
 
-// Protected shell. Real dashboard sections arrive in the Dashboard milestone.
-// Here we prove: session is enforced, org context is resolved, and multi-tenant
-// identity (user + org) is available server-side to scope every API call.
+function ChannelCard({ c }: { c: Channel }) {
+  const synced = Boolean(c.last_synced_at);
+  return (
+    <Link href={`/dashboard/channels/${c.id}`} className="glass glass-hover group flex flex-col p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3.5">
+          {c.thumbnail_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={c.thumbnail_url}
+              alt=""
+              className="h-12 w-12 rounded-full border border-white/10 object-cover"
+            />
+          ) : (
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-500/30 to-aiviolet/30 text-brand-200">
+              <Youtube size={20} />
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className="truncate font-display text-base font-semibold text-white">
+              {c.title ?? "Untitled channel"}
+            </p>
+            {c.handle && <p className="truncate text-[13px] text-slate-500">{c.handle}</p>}
+          </div>
+        </div>
+        <ArrowUpRight size={17} className="shrink-0 text-slate-600 transition group-hover:text-brand-300" />
+      </div>
+      <div className="mt-5 flex items-center gap-5 text-[13px] text-slate-400">
+        <span className="inline-flex items-center gap-1.5">
+          <Users size={13} className="text-slate-600" />
+          {c.subscriber_count?.toLocaleString() ?? "—"}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Video size={13} className="text-slate-600" />
+          {c.video_count?.toLocaleString() ?? "—"}
+        </span>
+        <span className="ml-auto">
+          {synced ? (
+            <Badge tone="positive">analyzed</Badge>
+          ) : (
+            <Badge tone="brand">
+              <RefreshCw size={11} className="mr-1 animate-spin" /> importing
+            </Badge>
+          )}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+/** First-run experience: educates instead of a blank screen. */
+function Onboarding() {
+  const items = [
+    { done: true, label: "Create your workspace" },
+    { done: false, label: "Connect your YouTube channel" },
+    { done: false, label: "Let the AI analyze videos & comments" },
+    { done: false, label: "Get your first strategy report" },
+  ];
+  return (
+    <div className="glass relative overflow-hidden p-10 sm:p-14">
+      <div aria-hidden className="absolute right-0 top-0 h-56 w-96 translate-x-1/4 -translate-y-1/3 rounded-full bg-brand-600/20 blur-[90px]" />
+      <div className="relative grid items-center gap-10 lg:grid-cols-2">
+        <div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-brand-400/25 bg-brand-500/10 px-3.5 py-1 text-xs font-medium text-brand-300">
+            <Sparkles size={13} /> Mission start
+          </span>
+          <h2 className="mt-5 font-display text-3xl font-bold tracking-tight text-white">
+            Connect a channel and watch it come alive
+          </h2>
+          <p className="mt-3.5 leading-relaxed text-slate-400">
+            One click starts the import. Within minutes the AI has read your videos and
+            comments, scored your channel&apos;s health, and written your first strategy
+            report.
+          </p>
+          <Link href="/connect/youtube" className="btn-primary mt-7 !px-6 !py-3">
+            <Youtube size={17} /> Connect YouTube <ArrowRight size={16} />
+          </Link>
+        </div>
+        <ul className="space-y-3.5">
+          {items.map(({ done, label }) => (
+            <li key={label} className="glass flex items-center gap-3.5 px-5 py-4 text-[15px]">
+              {done ? (
+                <CheckCircle2 size={19} className="shrink-0 text-brand-400" />
+              ) : (
+                <Circle size={19} className="shrink-0 text-slate-600" />
+              )}
+              <span className={done ? "text-slate-500 line-through" : "text-slate-200"}>{label}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------------- */
+
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ connected?: string; error?: string }>;
 }) {
-  const { userId, orgId, orgRole } = await auth();
-
-  // middleware already guarantees a session; this is defense-in-depth.
-  if (!userId) redirect("/sign-in");
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in"); // middleware backstop
 
   const user = await currentUser();
   const { connected, error } = await searchParams;
-  const channels = await loadChannels();
+  const channels = await getChannels();
+
+  const totalSubs = channels.reduce((n, c) => n + (c.subscriber_count ?? 0), 0);
+  const totalVideos = channels.reduce((n, c) => n + (c.video_count ?? 0), 0);
+  const firstName = user?.firstName ?? "Creator";
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
-      <header className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard/billing"
-            className="text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300"
-          >
-            Plans &amp; billing
-          </Link>
-          {/* Lets agencies switch between the creators (orgs) they manage. */}
-          <OrganizationSwitcher hidePersonal={false} />
-          <UserButton />
-        </div>
-      </header>
-
-      <section className="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
-        <p className="text-sm text-slate-500">Signed in as</p>
-        <p className="text-lg font-medium">
-          {user?.firstName ?? user?.emailAddresses[0]?.emailAddress ?? "Creator"}
-        </p>
-        <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+    <AppShell>
+      <div className="stagger">
+        {/* Greeting */}
+        <header className="mb-9 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <dt className="text-slate-500">User ID</dt>
-            <dd className="font-mono text-xs">{userId}</dd>
+            <p className="text-[13px] font-medium uppercase tracking-[0.2em] text-brand-400">
+              Command center
+            </p>
+            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              Welcome back, {firstName}
+            </h1>
           </div>
-          <div>
-            <dt className="text-slate-500">Active organization</dt>
-            <dd className="font-mono text-xs">{orgId ?? "— (personal workspace)"}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500">Role</dt>
-            <dd>{orgRole ?? "owner"}</dd>
-          </div>
-        </dl>
-      </section>
+          {channels.length > 0 && (
+            <Link href="/connect/youtube" className="btn-primary">
+              <Plus size={16} /> Connect channel
+            </Link>
+          )}
+        </header>
 
-      {connected === "1" && (
-        <p className="mt-6 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
-          Channel connected. We&apos;re importing your videos and comments in the
-          background — this can take a few minutes.
-        </p>
-      )}
-      {connected === "0" && (
-        <p className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          Connection failed{error ? `: ${error}` : ""}. Please try again.
-        </p>
-      )}
-
-      <section className="mt-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Connected channels</h2>
-          <Link
-            href="/connect/youtube"
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
-          >
-            + Connect YouTube
-          </Link>
-        </div>
+        {/* Status toasts */}
+        {connected === "1" && (
+          <div className="mb-7 flex items-center gap-3 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-300">
+            <RefreshCw size={15} className="animate-spin" />
+            Channel connected — importing videos and comments in the background. First
+            insights land in a few minutes.
+          </div>
+        )}
+        {connected === "0" && (
+          <div className="mb-7 rounded-xl border border-rose-400/25 bg-rose-400/10 px-5 py-4 text-sm text-rose-300">
+            Connection failed{error ? `: ${error}` : ""}. Please try again.
+          </div>
+        )}
 
         {channels.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700">
-            No channels connected yet. Connect a YouTube channel to start your analysis.
-          </div>
+          <Onboarding />
         ) : (
-          <ul className="space-y-3">
-            {channels.map((c) => (
-              <li key={c.id}>
-                <Link
-                  href={`/dashboard/channels/${c.id}`}
-                  className="flex items-center justify-between rounded-xl border border-slate-200 p-4 transition hover:border-brand-500 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
-                >
-                  <div>
-                    <p className="font-medium">{c.title ?? "Untitled channel"}</p>
-                    <p className="text-sm text-slate-500">
-                      {c.handle ? `${c.handle} · ` : ""}
-                      {c.subscriber_count?.toLocaleString() ?? "—"} subscribers ·{" "}
-                      {c.video_count?.toLocaleString() ?? "—"} videos
-                    </p>
-                  </div>
-                  <span className="text-xs text-slate-400">
-                    {c.last_synced_at
-                      ? `Synced ${new Date(c.last_synced_at).toLocaleDateString()}`
-                      : "Import pending…"}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* Fleet stats */}
+            <section className="mb-9 grid gap-4 sm:grid-cols-3">
+              <StatTile icon={Youtube} label="Connected channels" value={String(channels.length)} />
+              <StatTile icon={Users} label="Total audience reach" value={totalSubs.toLocaleString()} />
+              <StatTile icon={Video} label="Videos under analysis" value={totalVideos.toLocaleString()} />
+            </section>
+
+            {/* Channels */}
+            <section>
+              <h2 className="mb-4 text-[13px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                Your channels
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {channels.map((c) => (
+                  <ChannelCard key={c.id} c={c} />
+                ))}
+              </div>
+            </section>
+          </>
         )}
-      </section>
-    </main>
+      </div>
+    </AppShell>
   );
 }

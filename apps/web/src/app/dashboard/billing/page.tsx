@@ -1,7 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Check, Sparkles } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { AppShell } from "@/components/AppShell";
 
 // --- Types mirrored from the API's billing router ---
 type PlanLimits = {
@@ -66,6 +67,12 @@ async function completeStubCheckout(orgId: string, plan: string) {
   }
 }
 
+const planTaglines: Record<string, string> = {
+  free: "See your channel clearly.",
+  pro: "Your full-time AI strategist.",
+  agency: "Every client, one command center.",
+};
+
 export default async function BillingPage({
   searchParams,
 }: {
@@ -110,130 +117,138 @@ export default async function BillingPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
-      <header className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Plans &amp; billing</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Choose the plan that matches how many channels you run and how deep you want the
-            AI to go.
+    <AppShell breadcrumb={<span className="text-slate-300">Billing</span>}>
+      <div className="stagger">
+        <header className="mb-10 max-w-xl">
+          <p className="text-[13px] font-medium uppercase tracking-[0.2em] text-brand-400">
+            Plans &amp; billing
           </p>
-        </div>
-        <Link href="/dashboard" className="text-sm text-brand-600 hover:underline">
-          ← Back to dashboard
-        </Link>
-      </header>
+          <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Intelligence that pays for itself
+          </h1>
+          <p className="mt-3 text-slate-400">
+            Pick the plan that matches how many channels you run and how deep you want the AI
+            to go.
+          </p>
+        </header>
 
-      {params.reason === "channel_limit" && (
-        <p className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          You&apos;ve reached your plan&apos;s channel limit. Upgrade to connect more channels.
-        </p>
-      )}
-      {params.checkout === "success" && (
-        <p className="mb-6 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
-          Subscription updated. Your new plan is active.
-        </p>
-      )}
-      {params.checkout === "error" && (
-        <p className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          Something went wrong starting checkout. Please try again.
-        </p>
-      )}
-
-      {subscription && (
-        <section className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-          <div>
-            <p className="text-sm text-slate-500">Current plan</p>
-            <p className="text-lg font-semibold capitalize">
-              {subscription.limits.label}{" "}
-              <span className="text-sm font-normal text-slate-500">
-                ({subscription.active ? subscription.status : "inactive"})
-              </span>
-            </p>
-            {subscription.current_period_end && (
-              <p className="text-xs text-slate-400">
-                Renews {new Date(subscription.current_period_end).toLocaleDateString()}
-              </p>
-            )}
+        {params.reason === "channel_limit" && (
+          <div className="mb-7 rounded-xl border border-amber-400/25 bg-amber-400/10 px-5 py-4 text-sm text-amber-300">
+            You&apos;ve reached your plan&apos;s channel limit. Upgrade to connect more
+            channels.
           </div>
-          {subscription.plan !== "free" && subscription.active && (
-            <form action={manage}>
-              <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900">
-                Manage subscription
-              </button>
-            </form>
-          )}
-        </section>
-      )}
+        )}
+        {params.checkout === "success" && (
+          <div className="mb-7 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-300">
+            Subscription updated — your new plan is active.
+          </div>
+        )}
+        {params.checkout === "error" && (
+          <div className="mb-7 rounded-xl border border-rose-400/25 bg-rose-400/10 px-5 py-4 text-sm text-rose-300">
+            Something went wrong starting checkout. Please try again.
+          </div>
+        )}
 
-      <section className="grid gap-6 md:grid-cols-3">
-        {plans.map((p) => {
-          const isCurrent = p.plan === currentPlan;
-          const isFree = p.plan === "free";
-          const highlighted = p.plan === "pro";
-          return (
-            <div
-              key={p.plan}
-              className={`flex flex-col rounded-2xl border p-6 ${
-                highlighted
-                  ? "border-brand-500 shadow-lg shadow-brand-500/10"
-                  : "border-slate-200 dark:border-slate-800"
-              }`}
-            >
-              <div className="mb-4">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">{p.label}</h2>
-                  {highlighted && (
-                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
-                      Popular
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 text-3xl font-bold">
-                  ${p.price_monthly_usd}
-                  <span className="text-sm font-normal text-slate-500">/mo</span>
+        {subscription && (
+          <section className="glass mb-10 flex flex-wrap items-center justify-between gap-5 p-6">
+            <div>
+              <p className="text-[13px] uppercase tracking-[0.12em] text-slate-500">Current plan</p>
+              <p className="mt-1 font-display text-xl font-semibold capitalize text-white">
+                {subscription.limits.label}{" "}
+                <span className="text-sm font-normal text-slate-500">
+                  ({subscription.active ? subscription.status : "inactive"})
+                </span>
+              </p>
+              {subscription.current_period_end && (
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Renews {new Date(subscription.current_period_end).toLocaleDateString()}
                 </p>
-              </div>
-
-              <ul className="mb-6 flex-1 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                <li>
-                  {p.max_channels} channel{p.max_channels > 1 ? "s" : ""}
-                </li>
-                <li>{p.seats} team seat{p.seats > 1 ? "s" : ""}</li>
-                <li className={p.ai_chat ? "" : "text-slate-400 line-through"}>
-                  AI strategist chat
-                </li>
-                <li className={p.monthly_report ? "" : "text-slate-400 line-through"}>
-                  Monthly flagship strategy report
-                </li>
-              </ul>
-
-              {isCurrent ? (
-                <span className="rounded-lg bg-slate-100 py-2 text-center text-sm font-medium text-slate-500 dark:bg-slate-800">
-                  Current plan
-                </span>
-              ) : isFree ? (
-                <span className="rounded-lg py-2 text-center text-sm text-slate-400">
-                  Default
-                </span>
-              ) : (
-                <form action={subscribe}>
-                  <input type="hidden" name="plan" value={p.plan} />
-                  <button
-                    className={`w-full rounded-lg py-2 text-sm font-medium text-white transition ${
-                      highlighted
-                        ? "bg-brand-600 hover:bg-brand-700"
-                        : "bg-slate-900 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
-                    }`}
-                  >
-                    {currentPlan === "free" ? "Subscribe" : "Switch to " + p.label}
-                  </button>
-                </form>
               )}
             </div>
-          );
-        })}
-      </section>
-    </main>
+            {subscription.plan !== "free" && subscription.active && (
+              <form action={manage}>
+                <button className="btn-ghost">Manage subscription</button>
+              </form>
+            )}
+          </section>
+        )}
+
+        <section className="grid gap-5 md:grid-cols-3">
+          {plans.map((p) => {
+            const isCurrent = p.plan === currentPlan;
+            const isFree = p.plan === "free";
+            const highlighted = p.plan === "pro";
+            return (
+              <div
+                key={p.plan}
+                className={`glass relative flex flex-col p-8 ${
+                  highlighted ? "border-brand-500/50 shadow-glow" : "glass-hover"
+                }`}
+              >
+                {highlighted && (
+                  <span className="absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-gradient-to-r from-brand-500 to-aiviolet px-3.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-glow-sm">
+                    <Sparkles size={11} /> Most popular
+                  </span>
+                )}
+                <h2 className="font-display text-lg font-semibold text-white">{p.label}</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {planTaglines[p.plan] ?? ""}
+                </p>
+                <p className="mt-6 font-display text-5xl font-bold text-white">
+                  ${p.price_monthly_usd}
+                  <span className="text-base font-normal text-slate-500">/mo</span>
+                </p>
+
+                <ul className="mt-8 flex-1 space-y-3.5 text-[15px]">
+                  <li className="flex items-start gap-2.5 text-slate-300">
+                    <Check size={16} className="mt-0.5 shrink-0 text-brand-400" />
+                    {p.max_channels} channel{p.max_channels > 1 ? "s" : ""}
+                  </li>
+                  <li className="flex items-start gap-2.5 text-slate-300">
+                    <Check size={16} className="mt-0.5 shrink-0 text-brand-400" />
+                    {p.seats} team seat{p.seats > 1 ? "s" : ""}
+                  </li>
+                  <li
+                    className={`flex items-start gap-2.5 ${p.ai_chat ? "text-slate-300" : "text-slate-600 line-through"}`}
+                  >
+                    <Check
+                      size={16}
+                      className={`mt-0.5 shrink-0 ${p.ai_chat ? "text-brand-400" : "text-slate-700"}`}
+                    />
+                    AI strategist chat
+                  </li>
+                  <li
+                    className={`flex items-start gap-2.5 ${p.monthly_report ? "text-slate-300" : "text-slate-600 line-through"}`}
+                  >
+                    <Check
+                      size={16}
+                      className={`mt-0.5 shrink-0 ${p.monthly_report ? "text-brand-400" : "text-slate-700"}`}
+                    />
+                    Monthly flagship strategy report
+                  </li>
+                </ul>
+
+                {isCurrent ? (
+                  <span className="mt-9 rounded-xl border border-white/10 bg-white/[0.05] py-2.5 text-center text-sm font-medium text-slate-400">
+                    Current plan
+                  </span>
+                ) : isFree ? (
+                  <span className="mt-9 py-2.5 text-center text-sm text-slate-600">
+                    Included by default
+                  </span>
+                ) : (
+                  <form action={subscribe} className="mt-9">
+                    <input type="hidden" name="plan" value={p.plan} />
+                    <button className={`${highlighted ? "btn-primary" : "btn-ghost"} w-full`}>
+                      {currentPlan === "free" ? `Upgrade to ${p.label}` : `Switch to ${p.label}`}
+                    </button>
+                  </form>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      </div>
+    </AppShell>
   );
 }

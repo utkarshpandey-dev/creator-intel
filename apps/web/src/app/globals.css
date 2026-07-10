@@ -3,9 +3,108 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
+  --ring-brand: rgba(99, 102, 241, 0.5);
 }
 
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
 body {
-  @apply bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-ink-950 text-slate-200 antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.35);
+}
+
+/* Thin, dark scrollbars to match the shell */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+
+/* Keyboard focus is always visible, brand-tinted */
+:focus-visible {
+  outline: 2px solid var(--ring-brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Surface primitives
+--------------------------------------------------------------------------- */
+@layer components {
+  /* Frosted card surface used across the app */
+  .glass {
+    @apply rounded-2xl border border-white/[0.07] bg-white/[0.03] shadow-card backdrop-blur-md;
+  }
+
+  /* Interactive glass — lifts and glows on hover */
+  .glass-hover {
+    @apply transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-500/40 hover:bg-white/[0.05] hover:shadow-glow-sm;
+  }
+
+  /* Hairline divider */
+  .hairline {
+    @apply border-white/[0.07];
+  }
+
+  /* Gradient headline text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-electric via-brand-400 to-aiviolet bg-clip-text text-transparent;
+  }
+
+  /* Primary action — gradient, glow on hover */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow-glow-sm transition-all duration-300 hover:shadow-glow hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none;
+  }
+
+  /* Secondary action — quiet glass */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-slate-200 transition-all duration-300 hover:border-white/25 hover:bg-white/[0.07] active:scale-[0.98];
+  }
+
+  /* Skeleton shimmer for loading states */
+  .skeleton {
+    @apply animate-shimmer rounded-lg bg-gradient-to-r from-white/[0.04] via-white/[0.09] to-white/[0.04];
+    background-size: 200% 100%;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Motion — every animation is disabled for reduced-motion users
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Staggered entrance helper: apply .stagger to a parent; children fade up in order */
+.stagger > * {
+  animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.12s; }
+.stagger > *:nth-child(3) { animation-delay: 0.19s; }
+.stagger > *:nth-child(4) { animation-delay: 0.26s; }
+.stagger > *:nth-child(5) { animation-delay: 0.33s; }
+.stagger > *:nth-child(6) { animation-delay: 0.4s; }
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
