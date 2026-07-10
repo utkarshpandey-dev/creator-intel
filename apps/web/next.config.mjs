@@ -16,10 +16,10 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // The FastAPI base URL is read at runtime by server components / route handlers.
-  env: {
-    API_BASE_URL: process.env.API_BASE_URL ?? "http://localhost:8000",
-  },
+  // NOTE: API_BASE_URL is intentionally NOT declared under `env` here. Doing so inlines it
+  // at build time, freezing whatever value was present during the build (e.g. localhost).
+  // It is only ever read server-side (apiFetch, webhook routes), so leaving it out lets
+  // those reads pick up the real Vercel runtime value on every request.
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
