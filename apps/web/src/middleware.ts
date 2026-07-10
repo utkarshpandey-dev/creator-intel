@@ -20,5 +20,6 @@ export const config = {
     // Skip Next internals and static files, run on everything else.
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpg|jpeg|png|gif|svg|ico|woff2?)).*)",
     "/(api|trpc)(.*)",
+    "/__clerk/:path*", // Clerk auto-proxy path (v2 CLI convention)
   ],
 };
