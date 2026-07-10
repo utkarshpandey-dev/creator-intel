@@ -23,15 +23,15 @@ FROM python:3.13-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000 \
-    PATH="/install/bin:${PATH}"
+    PORT=8000
 
 # Run as an unprivileged user.
 RUN useradd --create-home --uid 10001 appuser
 WORKDIR /app
 
-# Copy the resolved dependencies from the builder, then the app source.
-COPY --from=builder /install /install
+# Copy the resolved dependencies into /usr/local so they land on Python's sys.path
+# (Python's prefix is /usr/local; a bare /install prefix would not be importable).
+COPY --from=builder /install /usr/local
 COPY . .
 
 USER appuser
